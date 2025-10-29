@@ -3,6 +3,7 @@
 ## Introduction
 SCRATCH-TumorHeterogeneity identifies tumor meta-programs (MPs) from scRNA-seq datasets by:
 
+* inputting annotated Seurat object 
 * extracting and preprocessing per-sample matrices
 * running NMF per sample across a rank grid
 * aggregating programs across samples to derive reproducible meta-programs with consistent gene signatures
@@ -27,84 +28,102 @@ This module provides a clean three-stage workflow using QMD notebooks, fully orc
 ```bash
 git clone https://github.com/WangLab-ComputationalBiology/SCRATCH-TumorHeterogeneity.git
 cd SCRATCH-TumorHeterogeneity
-Architecture
-Pipeline Stages (QMD notebooks)
-Stage	Notebook	Description
-1	prep.qmd	Extract per-sample counts, log-CPM/10, filter, center, clip → <sample>_preprocessed.rds
-2	nmf.qmd	Per-sample NMF on HVGs across rank grid → <sample>_nmf_fit.rds or .SKIP.txt
-3	aggregate.qmd	Aggregate NMF fits → meta-programs + figures/tables
+```
 
-Orchestration (Nextflow)
-main.nf — pipeline entrypoint
+---
 
-subworkflows/local/SCRATCH_MetaProg.nf — scatter/gather logic
+## Architecture
 
-modules/local/main.nf — QMD module execution
+### Pipeline Stages (QMD notebooks)
 
-nextflow.config — parameters + profiles
+| Stage | Notebook | Description |
+|------:|----------|-------------|
+| 1 | prep.qmd | Extract per-sample counts, apply log-CPM/10, filter, center, clip → `<sample>_preprocessed.rds` |
+| 2 | nmf.qmd | Per-sample NMF on HVGs across rank grid → `<sample>_nmf_fit.rds` or `.SKIP.txt` |
+| 3 | aggregate.qmd | Aggregate NMF fits into meta-programs and figures/tables |
 
-Parallelization happens at sample level for optimal HPC/cloud resource usage.
+### Orchestration (Nextflow components)
+
+* main.nf — pipeline entrypoint  
+* subworkflows/local/SCRATCH_MetaProg.nf — scatter/gather logic  
+* modules/local/main.nf — QMD execution modules  
+* nextflow.config — default runtime and container settings  
+
+Parallelization is handled at the sample level to maximize HPC/cloud utilization while ensuring reproducibility.
 
 ---
 
 ## Quick Start
-Minimal example (Docker)
-bash
-Copy code
+
+### Minimal example (Docker profile)
+
+```bash
 nextflow run main.nf -profile docker \
   --input_seurat_object /path/to/project_Azimuth_annotation_object.RDS \
   --project_name MyProject \
   --subset_col azimuth_labels \
   --subset_value Epithelial \
   -resume
-Typical workflow execution
-prep: Runs once on full Seurat object
+```
 
-nmf: Runs per sample in parallel
+---
 
-aggregate: Combines results into meta-programs
+## Typical workflow execution
 
-Key Parameters
-Shared
-Parameter	Description
---project_name	Label for outputs
---work_directory	Output root (default: ./output)
---seed	Reproducibility control
+1. prep: Runs once on full Seurat object  
+2. nmf: Scattered execution per sample  
+3. aggregate: Gathers all NMF fits into unified MPs  
 
-Subsetting (prep stage)
-Parameter	Description
---subset_col	Metadata column used for filtering
---subset_value	Value to retain such as "Epithelial"
+---
 
-Per-sample NMF (nmf stage)
-Parameter	Default	Purpose
---hvg_keep	5000	HVG limit
---rank_lb, --rank_ub	3–7	Rank search range
---nrun	10	NMF restarts
---min_cells	100	Minimum cells allowed
+## Key Parameters
 
-Aggregation stage
-Parameter	Purpose
---intra_min, --intra_max	Within-sample filtering
---inter_filter, --inter_min	Cross-sample filtering
---min_intersect_initial, --min_intersect_cluster, --min_group_size	MP clustering thresholds
+### Shared Parameters
+
+| Parameter | Description |
+|----------|-------------|
+| `--project_name` | Label for outputs |
+| `--work_directory` | Output root (default: `./output`) |
+| `--seed` | Reproducibility |
+
+### Subsetting (prep stage)
+
+| Parameter | Description |
+|----------|-------------|
+| `--subset_col`, `--subset_value` | Metadata-based selection (e.g. epithelial cells only) |
+
+### Per-sample NMF (nmf stage)
+
+| Parameter | Default | Purpose |
+|----------|---------|---------|
+| `--hvg_keep` | 5000 | Max HVGs retained |
+| `--rank_lb`, `--rank_ub` | 3–7 | Rank search range |
+| `--nrun` | 10 | NMF restarts |
+| `--min_cells` | 100 | Skip small samples |
+
+### Aggregation stage
+
+| Parameter | Purpose |
+|----------|---------|
+| `--intra_min`, `--intra_max` | Within-sample filtering |
+| `--inter_filter`, `--inter_min` | Cross-sample retention |
+| `--min_intersect_initial`, `--min_intersect_cluster`, `--min_group_size` | MP clustering thresholds |
 
 ---
 
 ## Expected Input
-A Seurat .RDS with:
 
-multiple samples
+A Seurat `.RDS` containing:
+* multiple samples
+* a metadata column allowing clean subsetting (exact string match required)
 
-a metadata column that allows clean subsetting
+---
 
-Exact string matching required for subset filtering.
+## Outputs
 
-Outputs
-Stored in work_directory:
+All outputs are stored in the `work_directory`:
 
-swift
-Copy code
+```
 data/per_sample_mat/
   <sample>_raw.rds
   <sample>_preprocessed.rds
@@ -120,17 +139,19 @@ MP_list_final.rds
 figures/metaprog/
   jaccard_heatmap_dendrogram.pdf
   NMF_cluster_pheatmap.pdf
-Includes:
+```
 
-final MP signatures
+These include:
 
-similarity heatmaps
+* Meta-program signatures  
+* Similarity heatmaps  
+* Filtering artifacts and diagnostics  
 
-useful diagnostics
+---
 
-Example Full Run
-bash
-Copy code
+## Example Full Run
+
+```bash
 nextflow run main.nf -profile singularity \
   --input_seurat_object project_Azimuth_annotation_object.RDS \
   --project_name Lung_MP \
@@ -140,3 +161,21 @@ nextflow run main.nf -profile singularity \
   --min_cells 150 \
   --intra_min 35 --intra_max 10 --inter_filter true --inter_min 10 \
   -resume
+```
+
+---
+
+## Documentation
+For more detailed documentation and advanced usage, refer to the Nextflow documentation and the comments within the subworkflow script (main.nf).
+
+## Contributing
+Contributions are welcome! Please submit a pull request or open an issue to discuss any changes.
+
+## License
+This project is available under the GNU General Public License v3.0. See the LICENSE file for more details.
+
+## Contact
+For questions or issues, please contact:
+
+sazaidi@mdanderson.org
+lwang22@mdanderson.org
