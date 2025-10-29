@@ -30,80 +30,81 @@ cd SCRATCH-TumorHeterogeneity
 Architecture
 Pipeline Stages (QMD notebooks)
 Stage	Notebook	Description
-1	prep.qmd	Extract per-sample counts, apply log-CPM/10, filtering, centering, clipping. Output: <sample>_preprocessed.rds
-2	nmf.qmd	Per-sample NMF on HVGs across rank grid. Output: <sample>_nmf_fit.rds or .SKIP.txt
-3	aggregate.qmd	Aggregation of NMF fits to infer meta-programs and generate figures/tables
-Orchestration (Nextflow components)
+1	prep.qmd	Extract per-sample counts, log-CPM/10, filter, center, clip → <sample>_preprocessed.rds
+2	nmf.qmd	Per-sample NMF on HVGs across rank grid → <sample>_nmf_fit.rds or .SKIP.txt
+3	aggregate.qmd	Aggregate NMF fits → meta-programs + figures/tables
 
+Orchestration (Nextflow)
 main.nf — pipeline entrypoint
 
 subworkflows/local/SCRATCH_MetaProg.nf — scatter/gather logic
 
-modules/local/main.nf — QMD execution modules
+modules/local/main.nf — QMD module execution
 
-nextflow.config — default runtime and container settings
+nextflow.config — parameters + profiles
 
-Parallelization is handled at the sample level to maximize HPC/cloud utilization while ensuring reproducibility.
+Parallelization happens at sample level for optimal HPC/cloud resource usage.
 
 ---
 
-# Quick Start
-Minimal example (Docker profile)
+## Quick Start
+Minimal example (Docker)
+bash
+Copy code
 nextflow run main.nf -profile docker \
   --input_seurat_object /path/to/project_Azimuth_annotation_object.RDS \
   --project_name MyProject \
   --subset_col azimuth_labels \
   --subset_value Epithelial \
   -resume
-
----
-
-## Typical workflow execution
-
+Typical workflow execution
 prep: Runs once on full Seurat object
 
-nmf: Scattered execution per sample
+nmf: Runs per sample in parallel
 
-aggregate: Gathers all NMF fits into unified MPs
+aggregate: Combines results into meta-programs
 
----
-
-## Key Parameters
+Key Parameters
 Shared
 Parameter	Description
 --project_name	Label for outputs
 --work_directory	Output root (default: ./output)
---seed	Reproducibility
-Subsetting (prep stage)
----
+--seed	Reproducibility control
 
-## Parameter	Description
---subset_col, --subset_value	Metadata-based selection (e.g., epithelial cells only)
+Subsetting (prep stage)
+Parameter	Description
+--subset_col	Metadata column used for filtering
+--subset_value	Value to retain such as "Epithelial"
+
 Per-sample NMF (nmf stage)
 Parameter	Default	Purpose
---hvg_keep	5000	Max HVGs retained
---rank_lb, --rank_ub	3–7	Rank range
+--hvg_keep	5000	HVG limit
+--rank_lb, --rank_ub	3–7	Rank search range
 --nrun	10	NMF restarts
---min_cells	100	Skip small samples
+--min_cells	100	Minimum cells allowed
+
 Aggregation stage
 Parameter	Purpose
 --intra_min, --intra_max	Within-sample filtering
---inter_filter, --inter_min	Cross-sample program retention
---min_intersect_initial, --min_intersect_cluster, --min_group_size	MP clustering behavior
+--inter_filter, --inter_min	Cross-sample filtering
+--min_intersect_initial, --min_intersect_cluster, --min_group_size	MP clustering thresholds
 
 ---
-# Expected Input
 
-A Seurat .RDS containing:
+## Expected Input
+A Seurat .RDS with:
 
 multiple samples
 
-a metadata column allowing clean subsetting (exact string match required)
+a metadata column that allows clean subsetting
+
+Exact string matching required for subset filtering.
 
 Outputs
+Stored in work_directory:
 
-All outputs are stored in the work_directory:
-
+swift
+Copy code
 data/per_sample_mat/
   <sample>_raw.rds
   <sample>_preprocessed.rds
@@ -119,17 +120,17 @@ MP_list_final.rds
 figures/metaprog/
   jaccard_heatmap_dendrogram.pdf
   NMF_cluster_pheatmap.pdf
+Includes:
 
+final MP signatures
 
-These include:
+similarity heatmaps
 
-Meta-program signatures
-
-Similarity heatmaps
-
-Filtering artifacts and diagnostics
+useful diagnostics
 
 Example Full Run
+bash
+Copy code
 nextflow run main.nf -profile singularity \
   --input_seurat_object project_Azimuth_annotation_object.RDS \
   --project_name Lung_MP \
