@@ -44,6 +44,7 @@ modules/local/main.nf — QMD execution modules
 nextflow.config — default runtime and container settings
 
 Parallelization is handled at the sample level to maximize HPC/cloud utilization while ensuring reproducibility.
+
 ---
 
 # Quick Start
