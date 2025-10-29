@@ -44,6 +44,7 @@ modules/local/main.nf — QMD execution modules
 nextflow.config — default runtime and container settings
 
 Parallelization is handled at the sample level to maximize HPC/cloud utilization while ensuring reproducibility.
+---
 
 # Quick Start
 Minimal example (Docker profile)
@@ -54,6 +55,8 @@ nextflow run main.nf -profile docker \
   --subset_value Epithelial \
   -resume
 
+---
+
 ## Typical workflow execution
 
 prep: Runs once on full Seurat object
@@ -62,6 +65,8 @@ nmf: Scattered execution per sample
 
 aggregate: Gathers all NMF fits into unified MPs
 
+---
+
 ## Key Parameters
 Shared
 Parameter	Description
@@ -69,7 +74,9 @@ Parameter	Description
 --work_directory	Output root (default: ./output)
 --seed	Reproducibility
 Subsetting (prep stage)
-Parameter	Description
+---
+
+## Parameter	Description
 --subset_col, --subset_value	Metadata-based selection (e.g., epithelial cells only)
 Per-sample NMF (nmf stage)
 Parameter	Default	Purpose
@@ -82,7 +89,9 @@ Parameter	Purpose
 --intra_min, --intra_max	Within-sample filtering
 --inter_filter, --inter_min	Cross-sample program retention
 --min_intersect_initial, --min_intersect_cluster, --min_group_size	MP clustering behavior
-Expected Input
+
+---
+# Expected Input
 
 A Seurat .RDS containing:
 
