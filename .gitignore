@@ -1,0 +1,16 @@
+.DS_Store
+.Rhistory
+.nextflow*
+work/
+results/
+figures/
+*.RDS
+*.rds
+*.RData*
+*.h5
+*.bam
+*.bai
+*.fastq.gz
+*.tar.gz
+*.zip
+*.sif
